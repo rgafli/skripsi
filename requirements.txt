@@ -2,6 +2,5 @@ streamlit
 pandas
 scikit-learn
 joblib
-transformers
-datasets
 torch
+transformers>=4.36.2
