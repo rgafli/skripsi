@@ -18,11 +18,14 @@ def load_svm_model():
 def load_vectorizer():
     return joblib.load("tfidf_vectorizer.pkl")
 
+from transformers import BertTokenizer, BertForSequenceClassification
+
 @st.cache_resource
 def load_bert_model():
-    model = BertForSequenceClassification.from_pretrained("bert-finetuned-superapp")
-    tokenizer = BertTokenizer.from_pretrained("bert-finetuned-superapp")
+    model = BertForSequenceClassification.from_pretrained("./bert-finetuned-superapp")
+    tokenizer = BertTokenizer.from_pretrained("./bert-finetuned-superapp")
     return model, tokenizer
+
 
 # --- Prediction Functions ---
 def predict_with_nb(text, model, vectorizer):
