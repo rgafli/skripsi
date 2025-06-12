@@ -2,10 +2,11 @@ import streamlit as st
 import joblib
 import torch
 from transformers import BertTokenizer, BertForSequenceClassification
-from sklearn.feature_extraction.text import TfidfVectorizer
-import numpy as np
 
-# --- Load Models and Vectorizer ---
+# Label mapping
+LABELS = ["Negative", "Neutral", "Positive"]
+
+# Load models and vectorizer with Streamlit caching
 @st.cache_resource
 def load_nb_model():
     return joblib.load("naive_bayes_model.pkl")
@@ -18,62 +19,60 @@ def load_svm_model():
 def load_vectorizer():
     return joblib.load("tfidf_vectorizer.pkl")
 
-from transformers import BertTokenizer, BertForSequenceClassification
-
 @st.cache_resource
 def load_bert_model():
-    model = BertForSequenceClassification.from_pretrained("./bert-finetuned-superapp")
-    tokenizer = BertTokenizer.from_pretrained("./bert-finetuned-superapp")
+    model = BertForSequenceClassification.from_pretrained(
+        "bert-finetuned-superapp", local_files_only=True
+    )
+    tokenizer = BertTokenizer.from_pretrained(
+        "bert-finetuned-superapp", local_files_only=True
+    )
     return model, tokenizer
 
+# Sentiment prediction logic
+def predict_sentiment(text, model_name):
+    if model_name in ["Naive Bayes", "SVM"]:
+        vectorizer = load_vectorizer()
+        vec_text = vectorizer.transform([text])
 
-# --- Prediction Functions ---
-def predict_with_nb(text, model, vectorizer):
-    X = vectorizer.transform([text])
-    pred = model.predict(X)[0]
-    return pred
-
-def predict_with_svm(text, model, vectorizer):
-    X = vectorizer.transform([text])
-    pred = model.predict(X)[0]
-    return pred
-
-def predict_with_bert(text, model, tokenizer):
-    model.eval()
-    inputs = tokenizer(text, return_tensors="pt", padding=True, truncation=True, max_length=512)
-    with torch.no_grad():
-        outputs = model(**inputs)
-    pred = torch.argmax(outputs.logits, dim=1).item()
-    return pred
-
-# --- Streamlit App UI ---
-st.set_page_config(page_title="Superapp Sentiment Analyzer", layout="centered")
-st.title("🧠 Superapp Review Sentiment Analyzer")
-st.markdown("Analyze customer feedback using **Naive Bayes**, **SVM**, or **BERT**.")
-
-user_input = st.text_area("✍️ Enter your superapp review:", height=150)
-model_choice = st.selectbox("📦 Choose a model to predict with:", ["Naive Bayes", "SVM", "BERT"])
-predict_button = st.button("🔍 Analyze")
-
-if predict_button and user_input.strip():
-    sentiment_map = {0: "Negative", 1: "Neutral", 2: "Positive"}
-
-    try:
-        if model_choice == "Naive Bayes":
+        if model_name == "Naive Bayes":
             model = load_nb_model()
-            vectorizer = load_vectorizer()
-            label = predict_with_nb(user_input, model, vectorizer)
-
-        elif model_choice == "SVM":
+        else:
             model = load_svm_model()
-            vectorizer = load_vectorizer()
-            label = predict_with_svm(user_input, model, vectorizer)
 
-        elif model_choice == "BERT":
-            model, tokenizer = load_bert_model()
-            label = predict_with_bert(user_input, model, tokenizer)
+        pred = model.predict(vec_text)[0]
+        return LABELS[pred]
 
-        st.success(f"🧾 **Predicted Sentiment:** {sentiment_map[label]}")
-    except Exception as e:
-        st.error("🚫 Model loading or prediction failed. Please check your model files.")
-        st.exception(e)
+    elif model_name == "BERT":
+        model, tokenizer = load_bert_model()
+        model.eval()
+
+        inputs = tokenizer(text, return_tensors="pt", truncation=True, padding=True, max_length=128)
+        with torch.no_grad():
+            outputs = model(**inputs)
+        pred = torch.argmax(outputs.logits, dim=1).item()
+        return LABELS[pred]
+
+    return "Unknown"
+
+# Streamlit UI
+st.title("🧠 Superapp Review Sentiment Analyzer")
+st.markdown("Analyze customer feedback using Naive Bayes, SVM, or BERT.")
+
+text_input = st.text_area("✍️ Enter your superapp review:")
+model_choice = st.selectbox("📦 Choose a model to predict with:", ["Naive Bayes", "SVM", "BERT"])
+
+if st.button("🔍 Analyze"):
+    if text_input.strip() == "":
+        st.warning("Please enter a review first.")
+    else:
+        try:
+            prediction = predict_sentiment(text_input, model_choice)
+            if prediction == "Negative":
+                st.error(f"Predicted Sentiment: {prediction}")
+            elif prediction == "Neutral":
+                st.warning(f"Predicted Sentiment: {prediction}")
+            else:
+                st.success(f"Predicted Sentiment: {prediction}")
+        except Exception as e:
+            st.exception(f"🚫 Model loading or prediction failed. Error: {e}")
