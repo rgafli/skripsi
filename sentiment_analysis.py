@@ -5,27 +5,24 @@ from transformers import BertTokenizer, BertForSequenceClassification
 
 LABELS = ["Negative", "Neutral", "Positive"]
 
-# Load Naive Bayes model
+# === Cached model and vectorizer loading ===
 @st.cache_resource
 def load_nb_model():
     return joblib.load("naive_bayes_model.pkl")
 
-# Load SVM model
 @st.cache_resource
 def load_svm_model():
     return joblib.load("svm_model.pkl")
 
-# Load TF-IDF vectorizer
 @st.cache_resource
 def load_vectorizer():
     return joblib.load("tfidf_vectorizer.pkl")
 
-# Load BERT model locally (no internet access)
 @st.cache_resource
 def load_bert_model():
     model = BertForSequenceClassification.from_pretrained(
-        "bert_finetuned_superapp",  # ✅ must match exact folder name
-        local_files_only=True
+        "bert_finetuned_superapp",       # ✅ FOLDER name, no ./ or slash
+        local_files_only=True            # ✅ Do not connect online
     )
     tokenizer = BertTokenizer.from_pretrained(
         "bert_finetuned_superapp",
@@ -33,7 +30,7 @@ def load_bert_model():
     )
     return model, tokenizer
 
-# Predict sentiment
+# === Prediction logic ===
 def predict_sentiment(text, model_choice):
     if model_choice in ["Naive Bayes", "SVM"]:
         vectorizer = load_vectorizer()
@@ -51,7 +48,7 @@ def predict_sentiment(text, model_choice):
         return LABELS[pred]
     return "Unknown"
 
-# Streamlit Interface
+# === Streamlit UI ===
 st.title("🧠 Superapp Review Sentiment Analyzer")
 st.markdown("Analyze customer feedback using Naive Bayes, SVM, or BERT.")
 
@@ -72,4 +69,4 @@ if st.button("🔍 Analyze"):
             else:
                 st.error(f"🔴 Sentiment: {result}")
         except Exception as e:
-            st.error(f"🚫 Model loading or prediction failed.\n\nError: {str(e)}")
+            st.error(f"🚫 Model loading or prediction failed.\n\n**Error:** {str(e)}")
