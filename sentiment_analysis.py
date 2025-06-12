@@ -44,73 +44,54 @@ print("SVM Accuracy:", accuracy_score(y_test, svm_pred))
 print("Naive Bayes Classification Report:\n", classification_report(y_test, nb_pred))
 print("SVM Classification Report:\n", classification_report(y_test, svm_pred))
 
+# -------------------
 # BERT Implementation
+# -------------------
+
+# Tokenization
 bert_tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
 bert_model = BertForSequenceClassification.from_pretrained('bert-base-uncased', num_labels=3)
 
 def encode_text_bert(texts, tokenizer, max_length=128):
     return tokenizer.batch_encode_plus(
-        texts.tolist(), max_length=max_length, padding=True, truncation=True, return_tensors="pt"
+        texts.tolist(),
+        max_length=max_length,
+        padding=True,
+        truncation=True,
+        return_tensors="pt"
     )
 
+# Encode train and test sets
 X_train_encoded_bert = encode_text_bert(X_train, bert_tokenizer)
 X_test_encoded_bert = encode_text_bert(X_test, bert_tokenizer)
 
-# Optimizer and Training for BERT
+# Optimizer
 optimizer_bert = AdamW(bert_model.parameters(), lr=1e-5)
-epochs = 3
 
+# Training loop
+epochs = 3
+bert_model.train()
 for epoch in range(epochs):
-    bert_model.train()
     optimizer_bert.zero_grad()
     outputs = bert_model(**X_train_encoded_bert, labels=torch.tensor(y_train))
     loss = outputs.loss
+    print(f"BERT - Epoch {epoch+1}, Loss: {loss.item():.4f}")
     loss.backward()
     optimizer_bert.step()
 
-# Evaluation for BERT
+# Evaluation
 bert_model.eval()
 with torch.no_grad():
     outputs = bert_model(**X_test_encoded_bert)
     predictions_bert = torch.argmax(outputs.logits, dim=-1)
 
 bert_accuracy = (predictions_bert == torch.tensor(y_test)).float().mean().item()
-print(f"BERT Test Accuracy: {bert_accuracy}")
+print(f"BERT Test Accuracy: {bert_accuracy:.4f}")
 
-# GPT Implementation
-gpt_tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
-gpt_model = GPT2ForSequenceClassification.from_pretrained('gpt2', num_labels=3)
-
-def encode_text_gpt(texts, tokenizer, max_length=128):
-    return tokenizer.batch_encode_plus(
-        texts.tolist(), max_length=max_length, padding=True, truncation=True, return_tensors="pt"
-    )
-
-X_train_encoded_gpt = encode_text_gpt(X_train, gpt_tokenizer)
-X_test_encoded_gpt = encode_text_gpt(X_test, gpt_tokenizer)
-
-# Optimizer and Training for GPT
-optimizer_gpt = AdamW(gpt_model.parameters(), lr=1e-5)
-for epoch in range(epochs):
-    gpt_model.train()
-    optimizer_gpt.zero_grad()
-    outputs = gpt_model(**X_train_encoded_gpt, labels=torch.tensor(y_train))
-    loss = outputs.loss
-    loss.backward()
-    optimizer_gpt.step()
-
-# Evaluation for GPT
-gpt_model.eval()
-with torch.no_grad():
-    outputs_gpt = gpt_model(**X_test_encoded_gpt)
-    predictions_gpt = torch.argmax(outputs_gpt.logits, dim=-1)
-
-gpt_accuracy = (predictions_gpt == torch.tensor(y_test)).float().mean().item()
-print(f"GPT Test Accuracy: {gpt_accuracy}")
-
+# ----------------------
 # Results Comparison
-print("\nResults Comparison:")
-print(f"Naive Bayes Accuracy: {accuracy_score(y_test, nb_pred)}")
-print(f"SVM Accuracy: {accuracy_score(y_test, svm_pred)}")
-print(f"BERT Accuracy: {bert_accuracy}")
-print(f"GPT Accuracy: {gpt_accuracy}")
+# ----------------------
+print("\n📊 Results Comparison:")
+print(f"Naive Bayes Accuracy: {accuracy_score(y_test, nb_pred):.4f}")
+print(f"SVM Accuracy: {accuracy_score(y_test, svm_pred):.4f}")
+print(f"BERT Accuracy: {bert_accuracy:.4f}")
