@@ -1,10 +1,33 @@
-
-import streamlit as st
+import pandas as pd
 import joblib
-import torch
-from transformers import BertTokenizer, BertForSequenceClassification
+from sklearn.model_selection import train_test_split
 from sklearn.feature_extraction.text import TfidfVectorizer
-import numpy as np
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.svm import SVC
+from sklearn.preprocessing import LabelEncoder
+
+# Load dataset
+df = pd.read_csv("googleplaystore_user_reviews.csv").dropna(subset=["Translated_Review", "Sentiment"])
+df["label"] = LabelEncoder().fit_transform(df["Sentiment"])
+
+# Split
+X_train, X_test, y_train, y_test = train_test_split(df["Translated_Review"], df["label"], test_size=0.2, random_state=42)
+
+# TF-IDF
+vectorizer = TfidfVectorizer(max_features=5000)
+X_train_vec = vectorizer.fit_transform(X_train)
+
+# Train models
+nb_model = MultinomialNB().fit(X_train_vec, y_train)
+svm_model = SVC(kernel='linear').fit(X_train_vec, y_train)
+
+# Save to disk
+joblib.dump(nb_model, "naive_bayes_model.pkl")
+joblib.dump(svm_model, "svm_model.pkl")
+joblib.dump(vectorizer, "tfidf_vectorizer.pkl")
+
+print("✅ Model files saved.")
+
 
 # --- Load Models and Vectorizer ---
 @st.cache_resource
