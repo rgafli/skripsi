@@ -20,14 +20,16 @@ def load_svm_model():
 def load_vectorizer():
     return joblib.load("tfidf_vectorizer.pkl")
 
-# Load BERT model and tokenizer from local folder
+# Load BERT model locally (no internet access)
 @st.cache_resource
 def load_bert_model():
     model = BertForSequenceClassification.from_pretrained(
-        "bert-finetuned-superapp", local_files_only=True
+        "bert_finetuned_superapp",  # ✅ must match exact folder name
+        local_files_only=True
     )
     tokenizer = BertTokenizer.from_pretrained(
-        "bert-finetuned-superapp", local_files_only=True
+        "bert_finetuned_superapp",
+        local_files_only=True
     )
     return model, tokenizer
 
@@ -49,7 +51,7 @@ def predict_sentiment(text, model_choice):
         return LABELS[pred]
     return "Unknown"
 
-# Streamlit App
+# Streamlit Interface
 st.title("🧠 Superapp Review Sentiment Analyzer")
 st.markdown("Analyze customer feedback using Naive Bayes, SVM, or BERT.")
 
